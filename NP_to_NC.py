@@ -15,121 +15,16 @@ __version__ = "1.0"
 import sys, argparse, re, random, json
 from collections import defaultdict, Counter
 from Bio import Entrez
+from Bio import SearchIO
+from Bio.Blast import NCBIWWW
+import csv
 
 if sys.version_info[0] < 3:
     raise NotImplementedError("Oi, $%£$#head! This is a python3 script.\n")
 
 ############ Please edit accordingly #########
-Entrez.email = "matteo.ferla@gmail.com"
+Entrez.email = "****a@gmail.com"
 ##############################################
-
-from Bio import SearchIO
-from Bio import Entrez
-from Bio.Blast import NCBIWWW
-import csv
-Entrez.email = "matteo.ferla@gmail.com"
-
-file='1FCCYGW901R-Alignment.xml'
-
-def junk():
-    data=[]
-    with open('out.csv','w') as w:
-        cw=csv.DictWriter(w,fieldnames=['protein_ID','protein_acc','protein_description','genome_ID','genome_from','genome_to','locus','symbol', 'gene_ID'])
-        cw.writeheader()
-        for result in SearchIO.parse(file, "blast-xml"):
-            try:
-                for subresult in result:
-                    identifiers=[subresult.id.split('|')[1]]
-                    for alt in subresult._id_alt:
-                        identifiers.append(alt.split('|')[-2])
-                    for identifier in identifiers:
-                        entry={'protein_ID':identifier,
-                                    'protein_acc':subresult.id.split('|')[3],
-                                    'protein_description':subresult.description}
-                        handle = Entrez.esearch(db="gene", term=identifier, retmax=10)
-                        idlist=Entrez.read(handle)["IdList"]
-                        if len(idlist) >0:
-                            d=Entrez.read(Entrez.efetch(db="gene", id=idlist[0], rettype="xml"))
-                            try:
-                                entry['gene_ID']=d[0]['Entrezgene_track-info']['Gene-track']['Gene-track_geneid']
-                            except:
-                                pass
-                            for i in range(2):
-                                try:
-                                    entry['genome_ID']=d[0]['Entrezgene_locus'][i]['Gene-commentary_accession']
-                                except:
-                                    pass
-                                try:
-                                    entry['genome_from']=d[0]['Entrezgene_locus'][i]['Gene-commentary_seqs'][0]['Seq-loc_int']['Seq-interval']['Seq-interval_from']
-                                except:
-                                    pass
-                                try:
-                                    entry['genome_to']=d[0]['Entrezgene_locus'][i]['Gene-commentary_seqs'][0]['Seq-loc_int']['Seq-interval']['Seq-interval_to']
-                                except:
-                                    pass
-                                try:
-                                    entry['symbol']=d[0]['Entrezgene_gene']['Gene-ref']['Gene-ref_locus']
-                                except:
-                                    pass
-                                try:
-                                    entry['locus']=d[0]['Entrezgene_gene']['Gene-ref']['Gene-ref_locus-tag']
-                                except:
-                                    pass
-                            raise ValueError #a double break, not an error!
-            except ValueError: #a double break, not an error!
-                pass
-            data.append(entry)
-            cw.writerow(entry)
-
-def parse_value(dex,fields):
-    try:
-        inner=dex
-        for entry in fields:
-            inner=dex[entry]
-        return inner
-    except:
-        return None
-
-def try_identifer(identifier):
-    handle = Entrez.esearch(db="gene", term=identifier, retmax=10)
-    idlist = Entrez.read(handle)["IdList"]
-    if len(idlist) > 0:
-        d = Entrez.read(Entrez.efetch(db="gene", id=idlist[0], rettype="xml"))
-        if parse_value(d, (0, 'Entrezgene_locus', 0, 'Gene-commentary_accession')):
-            i=0
-        else:
-            i=1
-        return {'protein_ID':identifier,
-                'gene_ID': parse_value(d,(0,'Entrezgene_track-info','Gene-track','Gene-track_geneid')),
-                 'genome_ID': parse_value(d,(0,'Entrezgene_locus',i,'Gene-commentary_accession')),
-                 'genome_from':parse_value(d,(0,'Entrezgene_locus',i,'Gene-commentary_seqs',0,'Seq-loc_int','Seq-interval','Seq-interval_from')),
-                 'genome_to':parse_value(d,(0,'Entrezgene_locus',i,'Gene-commentary_seqs','Seq-loc_int','Seq-interval','Seq-interval_to')),
-                 'symbol': parse_value(d,(0,'Entrezgene_gene','Gene-ref','Gene-ref_locus')),
-                 'locus': parse_value(d,(0,'Entrezgene_gene','Gene-ref','Gene-ref_locus-tag'))
-                 }
-    else:
-        return None
-
-def get_identifers(xml_result):
-    """xml_result is a a SearchIO result"""
-    identifiers=[]
-    for subresult in xml_result:
-        identifiers.append(subresult.id.split('|')[1])
-        for alt in subresult._id_alt:
-            identifiers.append(alt.split('|')[-2])
-    return identifiers
-
-
-def fetch_identifier(sequence):
-    result_handle = NCBIWWW.qblast("blastp", "nr", sequence)
-    xml_result = SearchIO.read(result_handle,'blast-xml')
-    identifiers=get_identifers(xml_result)
-    for identifier in identifiers:
-        entry=try_identifer(identifier)
-        if entry:
-            return entry
-
-
 
 class NP2NC:
     #debugprint = print
@@ -220,5 +115,3 @@ class NP2NC:
 
 def parse_file():
     pass
-
-print(NP2NC.fetch_identifier(filename='test.xml'))
