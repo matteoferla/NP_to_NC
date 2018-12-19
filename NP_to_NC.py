@@ -15,16 +15,20 @@ __version__ = "1.0"
 import sys, argparse, re, random, json
 from collections import defaultdict, Counter
 from Bio import Entrez
-from Bio import SearchIO
-from Bio.Blast import NCBIWWW
-import csv
 
 if sys.version_info[0] < 3:
     raise NotImplementedError("Oi, $%£$#head! This is a python3 script.\n")
 
 ############ Please edit accordingly #########
-Entrez.email = "****a@gmail.com"
+Entrez.email = "matteo.ferla@gmail.com"
 ##############################################
+
+from Bio import SearchIO
+from Bio import Entrez
+from Bio.Blast import NCBIWWW
+import csv
+Entrez.email = "matteo.ferla@gmail.com"
+
 
 class NP2NC:
     #debugprint = print
@@ -70,13 +74,16 @@ class NP2NC:
         """xml_result is a a SearchIO result"""
         identifiers = []
         for subresult in xml_result:
-            identifiers.append(subresult.id.split('|')[1])
+            #identifiers.append(subresult.id.split('|')[1])
+            identifiers.append(subresult.accession)
             for alt in subresult._id_alt:
                 identifiers.append(alt.split('|')[-2])
         return identifiers
 
     @classmethod
     def _try_identifer(cls,identifier):
+        if len(identifier) <5:
+            return None
         handle = Entrez.esearch(db="gene", term=identifier, retmax=10)
         idlist = Entrez.read(handle)["IdList"]
         if len(idlist) > 0:
@@ -92,7 +99,7 @@ class NP2NC:
                     'genome_to': cls._parse_value(d, (0, 'Entrezgene_locus', i, 'Gene-commentary_seqs', 'Seq-loc_int', 'Seq-interval', 'Seq-interval_to')),
                     'symbol': cls._parse_value(d, (0, 'Entrezgene_gene', 'Gene-ref', 'Gene-ref_locus')),
                     'locus': cls._parse_value(d, (0, 'Entrezgene_gene', 'Gene-ref', 'Gene-ref_locus-tag')),
-                    'protein_acc': cls._fetch_protein(identifier)
+                    **cls._fetch_protein(identifier)
                     }
         else:
             return None
@@ -111,7 +118,63 @@ class NP2NC:
     def _fetch_protein(cls,identifier):
         handle = Entrez.esearch(db="protein", term=identifier, retmax=1)
         d = Entrez.read(Entrez.efetch(db="protein", id=Entrez.read(handle)["IdList"][0], rettype="native"))
-        return cls._parse_value(d,('Bioseq-set_seq-set',0,'Seq-entry_seq','Bioseq','Bioseq_id',0,'Seq-id_other','Textseq-id','Textseq-id_accession'))
+        return {'matched_protein_acc': cls._parse_value(d,('Bioseq-set_seq-set',0,'Seq-entry_seq','Bioseq','Bioseq_id',0,'Seq-id_other','Textseq-id','Textseq-id_accession')),
+                'matched_prot_seq':cls._parse_value(d,('Bioseq-set_seq-set', 0, 'Seq-entry_seq', 'Bioseq', 'Bioseq_inst', 'Seq-inst', 'Seq-inst_seq-data', 'Seq-data', 'Seq-data_ncbieaa', 'NCBIeaa')),
+                'matched_organism':cls._parse_value(d,('Bioseq-set_seq-set', 0, 'Seq-entry_seq', 'Bioseq', 'Bioseq_descr', 'Seq-descr', 0, 'Seqdesc_source', 'BioSource', 'BioSource_org', 'Org-ref', 'Org-ref_taxname'))
+                }
+
+import collections
+
+def float_key(dex, key):
+    try:
+        if dex is str:
+            return False
+        elif isinstance(dex,collections.Mapping): #quacks like a dictionary
+            if key in dex:
+                return [key]
+            else:
+                for clavis in dex:
+                    verdict = float_key(dex[clavis],key)
+                    if verdict:
+                        return [clavis, *verdict]
+        elif isinstance(dex,collections.Iterable): #quacks like a list
+            for i in range(len(dex)):
+                verdict=float_key(dex[i], key)
+                if verdict is not False:
+                    return [i,*verdict]
+        else:
+            print('Unknown type',type(dex))
+        return False
+    except RecursionError:
+        return False
+
+def float_value(dex, value):
+    try:
+        if dex is str:
+            return False
+        elif isinstance(dex, collections.Mapping):  # quacks like a dictionary
+            for clavis in dex:
+                if value == dex[clavis]:
+                    return [clavis]
+                else:
+                    verdict = float_value(dex[clavis], value)
+                    if verdict:
+                        return [clavis, *verdict]
+        elif isinstance(dex, collections.Iterable):  # quacks like a list
+            for i in range(len(dex)):
+                if value == dex[i]:
+                    return [i]
+                else:
+                    verdict = float_value(dex[i], value)
+                    if verdict is not False:
+                        return [i, *verdict]
+        else:
+            print('Unknown type', type(dex))
+        return False
+    except RecursionError:
+        return False
 
 def parse_file():
     pass
+
+#NP2NC.fetch_identifier(filename='test.xml')
