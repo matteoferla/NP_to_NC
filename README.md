@@ -31,4 +31,6 @@ To get these I had to play round. Tip: use pprint!
     from pprint import PrettyPrinter
     pprint=PrettyPrinter().pprint
     pprint(the_xml_dictionary)
-
+    
+## See also
+If you want to customise the given values given, check out [my blogpost about dealing with horrid xml dictionaries](https://blog.matteoferla.com/2018/12/how-to-deal-with-horrid-xml.html), where three methods included herein are discussed.
