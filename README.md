@@ -32,5 +32,8 @@ To get these I had to play round. Tip: use pprint!
     pprint=PrettyPrinter().pprint
     pprint(the_xml_dictionary)
     
+## Wholesale
+The second script `parse_all_xls.py` parses all the >100 character cells for each rows within each sheet within each Excel file within a folder specified at the top of the script...
+
 ## See also
 If you want to customise the given values given, check out [my blogpost about dealing with horrid xml dictionaries](https://blog.matteoferla.com/2018/12/how-to-deal-with-horrid-xml.html), where three methods included herein are discussed.
